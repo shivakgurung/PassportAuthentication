@@ -6,10 +6,27 @@
     <title>Google Authentication</title>
 </head>
 <body>
-    <h3>Google Authentication</h3>
-    <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit. Pariatur, cupiditate.
-     Modi deserunt quas aliquam optio voluptatem quisquam, necessitatibus nisi deleniti!</p>
+    <h3>Login 
+        Google Authentication</h3>
+  
+
+     <form action="/login" method="post" >
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required />
+        </div>
+
+        <br/>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+
+        <button type="submit" style="margin-bottom: 20px;">Log in</button>
+      </form>
+
 
      <a href="/auth/google">Login with Google</a>
+    
 </body>
 </html>
