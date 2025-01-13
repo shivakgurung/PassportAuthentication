@@ -12,6 +12,10 @@ const session = require("express-session");
 const path = require("path");
 const userList = require("./Data/userList");
 
+require("./model/index");
+const { users } = require("./model/index");
+
+
 
 const app = express();
 app.set("view engine", "ejs");
@@ -33,6 +37,7 @@ const isLoggedIn = (req, res, next) => {
 app.listen(3000, (req, res) => {
     console.log("Auth app started");
 });
+
 
 app.get("/", (req, res) => {
     res.sendFile("index.html")
@@ -65,6 +70,26 @@ app.get("/profile", isLoggedIn, (req, res) => {
 //     res.send("Invalid credentials");
 // })
 
+app.post("/register", async (req, res) => {
+    const { email, username, password } = req.body;
+
+    if (!email || !username || !password) {
+        return res.send("please fill email, username, password");
+    }
+    const user = await users.findOne({ where: { email: email } });
+    if (user) {
+        return res.send("user already exists");
+    }
+
+    await users.create({
+        email: email,
+        username: username,
+        password: bcrypt.hashSync(password, 12),
+    });
+    res.send("user created successfully");
+
+})
+
 passport.serializeUser((user, done) => {
     // Save user id in session
     done(null, user.id);
@@ -75,6 +100,7 @@ passport.deserializeUser((id, done) => {
     const user = userList.find(user => user.id === id);
     done(null, user || false);
 });
+
 app.post("/login", passport.authenticate("local"), (req, res) => {
     res.redirect("/profile")
 })
