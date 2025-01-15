@@ -5,19 +5,75 @@
 const passport = require('passport');
 const Strategy = require('passport-local').Strategy;
 const userList = require("../Data/userList.js");
+const { users } = require('../model/index.js');
+const bcrypt = require("bcryptjs");
+const { where } = require('sequelize');
+
+
+users.beforeCreate(async (user) => {
+    user.password = await bcrypt.hash(user.password, 10);
+});
+//for signup
+passport.use(
+    'signup',
+    new Strategy(
+        {
+            usernameField: 'email',
+            passwordField: 'password',
+            passReqToCallback: true,
+        },
+        async (req, email, password, done) => {
+            console.log('check 1')
+            try {
+                console.log('check 2')
+                const { username } = req.body;
+                if (!email || !username || !password) {
+                    return done(null, false, { message: "please fill email, username, password" });
+                }
+                const user = await users.findOne({ where: { email: email } });
+                if (user) {
+                    return done(null, false, { message: "user with that email already exists" });
+                }
+                console.log(`email is ${email}, password is ${password}, username is ${username}`)
+                const userCreated = await users.create({ username, email, password });
+                return done(null, userCreated, { message: "User created successfully" });
+            } catch (err) {
+                return done(err);
+            }
+        }
+    )
+);
 
 
 //new Strategy is an object with 3 properties: username, password and passReqToCallback
 // export default 
-passport.use(new Strategy({ usernameField: "email" },
-    (email, password, done) => {
+//for login
+passport.use('login', new Strategy({ usernameField: "email" },
+    async (email, password, done) => {
         console.log("inside passport local stratum")
         console.log(` email is ${email}, password is ${password}`)
         try {
-            const user = userList.find(user => user.email === email && user.password === password);
-            if (!user) return done(null, false, { message: "Invalid credentials" })
-            console.log(`user is ${user}`)
-            return done(null, user, { message: "Logged in successfully" })
+            const userExists = await users.findOne({
+                where: {
+                    email: email,
+                },
+            });
+            console.log(`userExists is ${userExists?.email}`)
+            if (userExists) {
+                const isMatch = bcrypt.compareSync(password, userExists.password);
+                console.log(`isMatch is ${isMatch}`)
+                if (isMatch) {
+                    return done(null, userExists, { message: "Logged in successfully" })
+                }
+                else {
+                    console.log("invalid credentials")
+                    return done(null, false, { message: "Invalid Credentials" })
+                }
+            }
+            else {
+                return done(null, false, { message: "Invalid credentials" })
+            }
+
         }
         catch (err) {
             return done(err, false, { message: "Server Error" })

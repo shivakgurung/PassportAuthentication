@@ -1,16 +1,11 @@
-// import express from "express";
-// import passport from "passport";
-// import session from "express-session";
-// import path from "path"
-// import userList from "./Data/userList";
-// const LocalStrategy = require("passport-local").Strategy;
-
-
 const express = require("express");
 const passport = require("passport");
 const session = require("express-session");
 const path = require("path");
 const userList = require("./Data/userList");
+const bcrypt = require("bcryptjs");
+// const { Sequelize, DataTypes } = require("sequelize");
+
 
 require("./model/index");
 const { users } = require("./model/index");
@@ -25,6 +20,7 @@ require("./authStrategies/googleAuth");
 require("./authStrategies/local-strategy");
 
 app.use(express.json());
+// app.use(express.static(path.join(__dirname, "client")));
 app.use(express.static(path.join(__dirname, "client")));
 
 app.set("views", path.join(__dirname, "views"));
@@ -42,6 +38,12 @@ app.listen(3000, (req, res) => {
 app.get("/", (req, res) => {
     res.sendFile("index.html")
 });
+
+app.get("/signup", (req, res) => {
+    res.sendFile(path.join(__dirname, "client", "signup.html"));
+});
+
+
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,//if true, it will save the session even if there is no data to save
@@ -54,41 +56,13 @@ app.use(passport.session())
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 app.get("/auth/google/callback", passport.authenticate("google", { failureRedirect: "/" }), (req, res) => { res.redirect("/profile") });
 
+
 app.get("/profile", isLoggedIn, (req, res) => {
-
-    res.send(`Welcome ${req?.user?.displayName}`)
-
+    // res.send(`Welcome ${req?.user?.displayName}`)
+    res.send(`Welcome ${req?.user.username}`)
 })
 
-// app.post("/login", (req, res) => {
-//     const { email, password } = req.body;
-//     const user = userList.find(user => user.email === email && user.password === password);
-//     if (user) {
-//         req.session.user = user.id;
-//         return res.send("Logged in successfully")
-//     }
-//     res.send("Invalid credentials");
-// })
 
-app.post("/register", async (req, res) => {
-    const { email, username, password } = req.body;
-
-    if (!email || !username || !password) {
-        return res.send("please fill email, username, password");
-    }
-    const user = await users.findOne({ where: { email: email } });
-    if (user) {
-        return res.send("user already exists");
-    }
-
-    await users.create({
-        email: email,
-        username: username,
-        password: bcrypt.hashSync(password, 12),
-    });
-    res.send("user created successfully");
-
-})
 
 passport.serializeUser((user, done) => {
     // Save user id in session
@@ -101,9 +75,20 @@ passport.deserializeUser((id, done) => {
     done(null, user || false);
 });
 
-app.post("/login", passport.authenticate("local"), (req, res) => {
-    res.redirect("/profile")
-})
+app.post('/login', passport.authenticate('login', {
+    successRedirect: '/profile',
+    failureRedirect: '/',
+    // failureFlash: true,
+}));
+
+// Signup route
+app.post('/signup', passport.authenticate('signup', {
+    successRedirect: '/profile',
+    failureRedirect: '/signup',
+    // failureFlash: true,
+}));
+
+
 
 app.get("/api/auth/status", (req, res) => {
     req.sessionStore.get(req.sessionID, (err, session) => {
